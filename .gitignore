@@ -1,0 +1,5 @@
+build/*
+devel/*
+.catkin_workspace
+*CMakeLists.txt
+src/pf_localisation/__pycache__
