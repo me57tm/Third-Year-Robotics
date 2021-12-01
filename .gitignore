@@ -3,3 +3,4 @@ devel/*
 .catkin_workspace
 *CMakeLists.txt
 src/pf_localisation/__pycache__
+src/pf_localisation/laser_trace.so
