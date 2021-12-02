@@ -2,5 +2,5 @@ build/*
 devel/*
 .catkin_workspace
 src/pf_localisation/__pycache__
-*/laser_trace.so
-.pyc
+*.so
+*.pyc
