@@ -113,7 +113,7 @@ class SensorModel(object):
     
         p = 1.0 # Sample weight (not a probability!)
         
-         if colorSensor is not None:
+        if colorSensor is not None:
             expected_color = [127,127,127] # TODO: Update this to read from robot's position when possible
             colorReading = colorSensor.getReading(pose.position.x,pose.position.y)
             pzr = color_predict(colorReading[0],expected_color)
