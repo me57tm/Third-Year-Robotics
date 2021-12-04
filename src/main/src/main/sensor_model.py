@@ -22,6 +22,7 @@ class SensorModel(object):
         self.z_rand = 0.05 	# Random noise on all readings
         
         self.sigma_hit = 0.2 		# Noise on hit
+        self.sigma_color = 7.65      # Noise for colour readings (would be 7.65 scaled to fit with sigma_hit)
         self.lambda_short = 0.1 	# Noise on short reading
         
         # Initialise scan parameters to nothing
@@ -97,7 +98,7 @@ class SensorModel(object):
             # ----- rospy.logwarn("calc_map_range giving oversized ranges!!")
             return self.scan_range_max
         
-    def get_weight(self, scan, pose):
+    def get_weight(self, scan, pose,colorSensor=None):
         """
         Compute the likelihood weighting for each of a set of particles 
         
@@ -127,7 +128,11 @@ class SensorModel(object):
                                      getHeading(pose.orientation) + obs_bearing)
             pz = self.predict(obs_range, map_range)
             p += pz*pz*pz # Cube probability: reduce low-probability particles 
-            
+            if colorSensor is not None:
+                pzr = color_predict(colorSensor.getReading(pose)[0])
+                pzb = color_predict(colorSensor.getReading(pose)[1])
+                pzg = color_predict(colorSensor.getReading(pose)[2])
+                p += pzr * pzb * pzg
         return p
     
     def predict(self, obs_range, map_range):
@@ -166,4 +171,11 @@ class SensorModel(object):
         
         return pz
 
-   
+    def color_predict(self,obs_color,map_color):#colour values 0-255
+        z = obs_color - map_color
+        pz = 0
+        pz +=( #self.z_hit *
+                math.exp(-(z * z) / (2 * self.sigma_colour * self.sigma_colour)) )
+        return pz
+    
+        
