@@ -4,6 +4,7 @@ Provides a SensorModel class to calculate particle weights.
 """
 import rospy
 from . util import getHeading
+from . import color_sensor
 
 import math
 
@@ -112,7 +113,13 @@ class SensorModel(object):
     
         p = 1.0 # Sample weight (not a probability!)
         
-        
+         if colorSensor is not None:
+            expected_color = [127,127,127] # TODO: Update this to read from robot's position when possible
+            colorReading = colorSensor.getReading(pose.position.x,pose.position.y)
+            pzr = color_predict(colorReading[0],expected_color)
+            pzb = color_predict(colorReading[1],expected_color)
+            pzg = color_predict(colorReading[2],expected_color)
+            p += (pzr * pzb * pzg)*len(self.reading_points)
 
         
         for i, obs_bearing in self.reading_points:
@@ -128,11 +135,6 @@ class SensorModel(object):
                                      getHeading(pose.orientation) + obs_bearing)
             pz = self.predict(obs_range, map_range)
             p += pz*pz*pz # Cube probability: reduce low-probability particles 
-            if colorSensor is not None:
-                pzr = color_predict(colorSensor.getReading(pose)[0])
-                pzb = color_predict(colorSensor.getReading(pose)[1])
-                pzg = color_predict(colorSensor.getReading(pose)[2])
-                p += pzr * pzb * pzg
         return p
     
     def predict(self, obs_range, map_range):
