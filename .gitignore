@@ -4,3 +4,4 @@ devel/*
 src/pf_localisation/__pycache__
 *.so
 *.pyc
+*.gv

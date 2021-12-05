@@ -11,7 +11,7 @@ import main.pf
 from main.util import *
 
 from geometry_msgs.msg import ( PoseStamped, PoseWithCovarianceStamped,
-                                PoseArray, Quaternion )
+                                PoseArray, Quaternion, Transform, TransformStamped )
 from tf.msg import tfMessage
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid, Odometry
@@ -59,6 +59,7 @@ class PaintingNode(object):
         self._odometry_subscriber = rospy.Subscriber("/odom", Odometry,
                                                      self._odometry_callback,
                                                      queue_size=1)
+        self._truth_subscriber = rospy.Subscriber("/base_pose_ground_truth",Odometry,self._ground_truth_callback,queue_size=1)
 
     def _initial_pose_callback(self, pose):
         """ called when RViz sends a user supplied initial pose estimate """
@@ -80,6 +81,23 @@ class PaintingNode(object):
                 rospy.logwarn("Filter cycle overran timeslot")
                 rospy.loginfo("Odometry update: %fs"%t_odom)
                 rospy.loginfo("Particle update: %fs"%t_filter)
+                
+                
+    def _ground_truth_callback(self,odometry):
+        transform = Transform()
+        transform.translation.x = odometry.pose.pose.position.x + 15.050000224262476 #TODO: Hardcoded & bad (stolen from sensor model map origin)
+        transform.translation.y = odometry.pose.pose.position.y +15.050000224262476
+        transform.rotation.x=odometry.pose.pose.orientation.x
+        transform.rotation.y=odometry.pose.pose.orientation.y
+        transform.rotation.z=odometry.pose.pose.orientation.z
+        transform.rotation.w=odometry.pose.pose.orientation.w
+        new_tfstamped = TransformStamped()
+        new_tfstamped.child_frame_id = "/base_pose_ground_truth"
+        new_tfstamped.header.frame_id = "map"
+        new_tfstamped.header.stamp = rospy.Time.now()
+        new_tfstamped.transform = transform
+        self._tf_publisher.publish(tfMessage(transforms=[new_tfstamped]))
+        pass
     
     def _laser_callback(self, scan):
         """
