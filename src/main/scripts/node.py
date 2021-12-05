@@ -8,6 +8,7 @@ pf.PFLocaliser() to do the localisation.
 
 import rospy
 import main.pf
+import main.fit_image
 from main.util import *
 
 from geometry_msgs.msg import ( PoseStamped, PoseWithCovarianceStamped,
@@ -26,11 +27,11 @@ class PaintingNode(object):
         # ----- Minimum change (m/radians) before publishing new particle cloud and pose
         self._PUBLISH_DELTA = rospy.get_param("publish_delta", 0.1)  
         
-        self._particle_filter = main.pf.PFLocaliser()
-
         self._latest_scan = None
         self._last_published_pose = None
         self._initial_pose_received = False
+        
+        self._image = False
 
         self._pose_publisher = rospy.Publisher("/estimatedpose", PoseStamped)
         self._amcl_pose_publisher = rospy.Publisher("/amcl_pose",
@@ -48,6 +49,15 @@ class PaintingNode(object):
         rospy.loginfo("Map received. %d X %d, %f px/m." %
                       (ocuccupancy_map.info.width, ocuccupancy_map.info.height,
                        ocuccupancy_map.info.resolution))
+        
+        self._image_fitter = main.fit_image.ImageFitter()
+        
+        self._paint_location = self._image_fitter.findLocation(ocuccupancy_map, self._image)
+        
+        #TODO Actually path to that location
+        
+        self._particle_filter = main.pf.PFLocaliser()
+        
         self._particle_filter.set_map(ocuccupancy_map)
         
         self._laser_subscriber = rospy.Subscriber("/base_scan", LaserScan,
@@ -60,6 +70,9 @@ class PaintingNode(object):
                                                      self._odometry_callback,
                                                      queue_size=1)
         self._truth_subscriber = rospy.Subscriber("/base_pose_ground_truth",Odometry,self._ground_truth_callback,queue_size=1)
+
+                                                     
+        #TODO Spin off painter in its own thread, passing image.
 
     def _initial_pose_callback(self, pose):
         """ called when RViz sends a user supplied initial pose estimate """
@@ -77,6 +90,11 @@ class PaintingNode(object):
         if self._initial_pose_received:
             t_odom = self._particle_filter.predict_from_odometry(odometry)
             t_filter = self._particle_filter.update_filter(self._latest_scan)
+            # ----- Get updated particle cloud and publish it
+            self._cloud_publisher.publish(self._particle_filter.particlecloud)
+        
+            # ----- Get updated transform and publish it
+            self._tf_publisher.publish(self._particle_filter.tf_message)            
             if t_odom + t_filter > 0.1:
                 rospy.logwarn("Filter cycle overran timeslot")
                 rospy.loginfo("Odometry update: %fs"%t_odom)
@@ -101,52 +119,9 @@ class PaintingNode(object):
     
     def _laser_callback(self, scan):
         """
-        Laser received. Store a ref to the latest scan. If robot has moved
-        much, republish the latest pose to update RViz
+        Laser received. Store a ref to the latest scan. 
         """
         self._latest_scan = scan
-        if self._initial_pose_received:
-            if  self._sufficientMovementDetected(self._particle_filter.estimatedpose):
-                # ----- Publish the new pose
-                self._amcl_pose_publisher.publish(self._particle_filter.estimatedpose)
-                estimatedpose =  PoseStamped()
-                estimatedpose.pose = self._particle_filter.estimatedpose.pose.pose
-                estimatedpose.header.frame_id = "map"
-                self._pose_publisher.publish(estimatedpose)
-                
-                # ----- Update record of previously-published pose
-                self._last_published_pose = deepcopy(self._particle_filter.estimatedpose)
-        
-                # ----- Get updated particle cloud and publish it
-                self._cloud_publisher.publish(self._particle_filter.particlecloud)
-        
-                # ----- Get updated transform and publish it
-                self._tf_publisher.publish(self._particle_filter.tf_message)
-    
-    def _sufficientMovementDetected(self, latest_pose):
-        """
-        Compares the last published pose to the current pose. Returns true
-        if movement is more the self._PUBLISH_DELTA
-        """
-        # ----- Check that minimum required amount of movement has occurred before re-publishing
-        latest_x = latest_pose.pose.pose.position.x
-        latest_y = latest_pose.pose.pose.position.y
-        prev_x = self._last_published_pose.pose.pose.position.x
-        prev_y = self._last_published_pose.pose.pose.position.y
-        location_delta = abs(latest_x - prev_x) + abs(latest_y - prev_y)
-
-        # ----- Also check for difference in orientation: Take a zero-quaternion,
-        # ----- rotate forward by latest_rot, and rotate back by prev_rot, to get difference)
-        latest_rot = latest_pose.pose.pose.orientation
-        prev_rot = self._last_published_pose.pose.pose.orientation
-
-        q = rotateQuaternion(Quaternion(w=1.0),
-                             getHeading(latest_rot))   # Rotate forward
-        q = rotateQuaternion(q, -getHeading(prev_rot)) # Rotate backward
-        heading_delta = abs(getHeading(q))
-        #rospy.loginfo("Moved by %f"%location_delta)
-        return (location_delta > self._PUBLISH_DELTA or
-                heading_delta > self._PUBLISH_DELTA)
 
 if __name__ == '__main__':
     # --- Main Program  ---
