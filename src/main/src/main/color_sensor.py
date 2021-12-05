@@ -3,7 +3,7 @@ import math
 import random
 
 class ColorSensor():
-    def __init__():
+    def __init__(self):
         self.color_map = [[]]
     
     def set_map(self,occupancy_map):
@@ -19,9 +19,9 @@ class ColorSensor():
     
     
     def getReading(self,x,y):
-        reading = color_map[x,y] #these or the definition might be the wrong way round.
+        reading = self.color_map[x,y] #these or the definition might be the wrong way round.
         if reading is None:
-            return getNoise()
+            return self.getNoise()
         else:
             return reading
         
