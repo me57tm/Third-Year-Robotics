@@ -2,7 +2,7 @@
 <package>
   <name>main</name>
   <version>0.0.0</version>
-  <description>The pf_localisation package</description>
+  <description>The main package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
