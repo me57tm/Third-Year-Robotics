@@ -54,13 +54,13 @@ class PaintingNode(object):
                       (ocuccupancy_map.info.width, ocuccupancy_map.info.height,
                        ocuccupancy_map.info.resolution))
         
-        self._image_fitter = main.fit_image.ImageFitter()
-        rospy.loginfo(self._image_fitter.findLocation(ocuccupancy_map))
+        self._image_fitter = main.fit_image.ImageFitter(self._image)
         
         
-        self._paint_location = self._image_fitter.findLocation(ocuccupancy_map, self._image)
-
-        self.image_painter = main.image_painter.ImagePainter(self._paint_location, self._colour_map, self._image)
+        
+        self._paint_location = self._image_fitter.findLocation(ocuccupancy_map)
+        
+        rospy.loginfo(self._paint_location)
         
         #TODO Actually path to that location
         
@@ -82,7 +82,9 @@ class PaintingNode(object):
         self._cmd_vel_subscriber = rospy.Subscriber("/cmd_vel", Twist, self._cmd_vel_callback, queue_size=1)
 
                                                      
-        #TODO Spin off painter in its own thread, passing image.
+        self._painter_thread = main.image_painter.ImagePainter(1, "Painter", 1, self._paint_location, self._colour_map, self._image)
+        self._painter_thread.start()
+        rospy.loginfo("Threading Worked")
 
     def _initial_pose_callback(self, pose):
         """ called when RViz sends a user supplied initial pose estimate """
@@ -109,7 +111,11 @@ class PaintingNode(object):
                 rospy.logwarn("Filter cycle overran timeslot")
                 rospy.loginfo("Odometry update: %fs"%t_odom)
                 rospy.loginfo("Particle update: %fs"%t_filter)
-                
+            # ----- Get updated pose estimate and publish it
+            estimatedpose =  PoseStamped()
+            estimatedpose.pose = self._particle_filter.estimatedpose.pose.pose
+            estimatedpose.header.frame_id = "map"
+            self._pose_publisher.publish(estimatedpose)    
                 
     def _ground_truth_callback(self,odometry):
         transform = Transform()
