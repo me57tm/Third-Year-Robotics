@@ -58,8 +58,8 @@ class PaintingNode(object):
         self._image_fitter = main.fit_image.ImageFitter(self._image)
         rospy.loginfo(self._image_fitter.findLocation(ocuccupancy_map))
 
-        self._colour_sensor = main.color_sensor.ColorSensor()
-        self._colour_map = self._colour_sensor.set_map(ocuccupancy_map)
+        self._colour_map = [[None]*ocuccupancy_map.info.height]*ocuccupancy_map.info.width#This may or may not be the wrong way round
+        self._colour_sensor = main.color_sensor.ColorSensor(self.colour_map)
         
         self._paint_location = self._image_fitter.findLocation(ocuccupancy_map)
 

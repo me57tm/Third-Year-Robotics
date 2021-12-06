@@ -5,7 +5,7 @@ import random
 class ColorSensor():
     def __init__(self,color_map):
         self.color_map = color_map
-        
+    
     def getReading(self,x,y):
         reading = self.color_map[x,y]
         if reading is None:
