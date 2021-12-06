@@ -58,7 +58,7 @@ class PaintingNode(object):
         self._image_fitter = main.fit_image.ImageFitter(self._image)
 
         self._colour_map = [[None]*ocuccupancy_map.info.height]*ocuccupancy_map.info.width#This may or may not be the wrong way round
-        self._colour_sensor = main.color_sensor.ColorSensor(self.colour_map)
+        self._colour_sensor = main.color_sensor.ColorSensor(self._colour_map)
         
         self._paint_location = self._image_fitter.findLocation(ocuccupancy_map)
 
@@ -84,7 +84,7 @@ class PaintingNode(object):
         
 
                                                      
-        self._painter_thread = main.image_painter.ImagePainter(1, "Painter", 1, self._paint_location, self._colour_map, self._image)
+        self._painter_thread = main.image_painter.ImagePainter(1, "Painter", 1, self._paint_location, self._colour_map, self._image, ocuccupancy_map)
         self._painter_thread.start()
         rospy.loginfo("Threading Worked")
 
@@ -109,10 +109,10 @@ class PaintingNode(object):
         
             # ----- Get updated transform and publish it
             self._tf_publisher.publish(self._particle_filter.tf_message)            
-            if t_odom + t_filter > 0.1:
-                rospy.logwarn("Filter cycle overran timeslot")
-                rospy.loginfo("Odometry update: %fs"%t_odom)
-                rospy.loginfo("Particle update: %fs"%t_filter)
+            #if t_odom + t_filter > 0.1:
+                #rospy.logwarn("Filter cycle overran timeslot")
+                #rospy.loginfo("Odometry update: %fs"%t_odom)
+                #rospy.loginfo("Particle update: %fs"%t_filter)
             # ----- Get updated pose estimate and publish it
             estimatedpose =  PoseStamped()
             estimatedpose.pose = self._particle_filter.estimatedpose.pose.pose

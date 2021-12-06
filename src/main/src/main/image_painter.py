@@ -3,9 +3,10 @@ from geometry_msgs.msg import  (PoseStamped, Pose, PoseWithCovarianceStamped, Tw
 import threading
 import rospy
 import math
+from . util import getHeading
 
 class ImagePainter(threading.Thread):
-    def __init__(self, threadID, name, counter, starting_coord, colour_map, image):
+    def __init__(self, threadID, name, counter, starting_coord, colour_map, image, map):
         """ 
         Args:
             | starting_coord: the first coordinate of the image to draw
@@ -13,6 +14,7 @@ class ImagePainter(threading.Thread):
         threading.Thread.__init__(self)
         self.threadID = threadID
         self.name = name
+        self.map = map
         self.counter = counter
         self.command_queue = []
         self.colour_map = colour_map
@@ -44,25 +46,22 @@ class ImagePainter(threading.Thread):
             self.latest_pose_estimate = rospy.wait_for_message("/estimatedpose", PoseStamped, timeout=None)
             # if we are at the correct position, draw the pixel and pop the current command
             # if not then move to the correct position
-            rospy.loginfo("got pose")
             x, y, rgb = self.command_queue[0]
             # print(self.command_queue[0])
-            print(x, y, rgb)
             if self.checkPosition(x,y):
                 print("in position")
                 self.paint(x, y, rgb)
                 self.command_queue.pop(0)
             else:
-                print("moving")
                 self.moveTowards(x, y)
 
     def checkPosition(self, targetx, targety):
-        range = 1
-        cp = self.latest_pose_estimate.pose.pose
+        prange = 1
+        cp = self.latest_pose_estimate.pose
         cpx = cp.position.x
         cpy = cp.position.y
-        if cpx > targetx - range and cpx < targetx + range:
-            if cpy > targety - range and cpy < targety + range:
+        if cpx > targetx - prange and cpx < targetx + prange:
+            if cpy > targety - prange and cpy < targety + prange:
                 return True
         return False
 
@@ -70,13 +69,22 @@ class ImagePainter(threading.Thread):
         self.colour_map[y][x] = rgb
 
     def moveTowards(self, x, y):
-        rospy.loginfo("you made it!")
-        cp = self.current_pose.pose.pose
+        x = x*self.map.info.resolution
+        y = y*self.map.info.resolution
+        cp = self.latest_pose_estimate.pose
         cpx = cp.position.x
         cpy = cp.position.y
+        cpr = getHeading(cp.orientation)
+        print("Goal:", x, y, "Current:", cpx, cpy)
         angle = math.atan2(y-cpy, x-cpx)
         distance = math.sqrt(((x-cpx)*(x-cpx)) +((y-cpy)*(y-cpy)))
-        twist = Twist()
-        twist.linear.x = distance
-        twist.angular.z = angle
-        self._cmd_vel_publisher.publish(twist)
+        twista = Twist()
+        twista.angular.z = angle - cpr
+        self._cmd_vel_publisher.publish(twista)
+        rospy.sleep(1)
+        twistd = Twist()
+        twistd.linear.x = distance
+        self._cmd_vel_publisher.publish(twistd)
+        rospy.sleep(1)
+        print("Distance:", distance, "Angle:", angle - cpr)
+        
