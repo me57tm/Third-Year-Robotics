@@ -54,7 +54,7 @@ class PaintingNode(object):
         print(self._image_fitter.findLocation(ocuccupancy_map))
         
         
-        self._paint_location = self._image_fitter.findLocation(ocuccupancy_map, self._image)
+        self._paint_location = self._image_fitter.findLocation(ocuccupancy_map)
         
         #TODO Actually path to that location
         

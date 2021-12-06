@@ -22,6 +22,7 @@ class ImageFitter(object):
         for x in range (0, map.info.width):
             for y in range (0, map.info.height):
                 if self.findGridProb(x, y, map) == 0:
+                    print("made it to loop")
                     if self.checkImage(x, y, map) == True:
                         return (x,y)
         return "hi"
@@ -35,8 +36,6 @@ class ImageFitter(object):
         return True
 
     def findGridProb(self,x, y, map): # 0 = clear, 100 = wall, -1 = unknown
-        i = int(x / map.info.resolution)
-        j = int(y / map.info.resolution)
-        if i < 0 or i >= map.info.width or j < 0 or j >= map.info.height: # is it out of bounds
+        if x < 0 or x >= map.info.width or y < 0 or y >= map.info.height: # is it out of bounds
             return -1
-        return map.data[i+j*map.info.height]
+        return map.data[x+y*map.info.height]
