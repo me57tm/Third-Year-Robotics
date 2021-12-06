@@ -303,7 +303,7 @@ class PFLocaliser(object):
         # ----- Insert new Transform into a TransformStamped object and add to the
         # ----- tf tree
         new_tfstamped = TransformStamped()
-        new_tfstamped.child_frame_id = "/odom"
+        new_tfstamped.child_frame_id = "odom"
         new_tfstamped.header.frame_id = "map"
         new_tfstamped.header.stamp = currentTime
         new_tfstamped.transform = transform

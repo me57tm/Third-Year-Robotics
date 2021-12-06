@@ -1,12 +1,13 @@
-
+from PIL import Image
 
 class ImageFitter(object):
     
     def __init__(self):
         self.IMAGE_RES = 0.05
+        self.image = Image.open("src/main/data/blacksquare.png")
         
        
-    def findLocation(self, map, image):
+    def findLocation(self, map):
         """
         Find a location on the given map to print the given image.
         Called when the robot has finished mapping the environment
@@ -15,26 +16,27 @@ class ImageFitter(object):
         
         :Args:
             | map: the map created from SLAM or given to the robot
-            | image: the image represented as a 2D array
         :Return:
             | (x,y) map coordinates to start drawing image
         """
-        self.position.x = []
-        self.position.y = []
-        self.position.z = []
-        
-        # RAIN(XT)
-select randomly W ⊂X
-Nt←|{i : ti = t}| for t = −1,+1
-Bi ←√MAX(N−1,N+1)/Nti for i = 1,...,NˆH ←B ·(XT W)/(⊮X + ⊮W −XT W)
-β ←
-(
-I/C + ˆHT ˆH
-)−1
-( ˆHT B ·T)
-return W,β
-PREDICT(X)
-H ←(XT W)/(⊮X + ⊮W −XT W)
-return SIGN(Hβ)#
-        
-        return (0,0)
+        for x in range (0, map.info.width):
+            for y in range (0, map.info.height):
+                if self.findGridProb(x, y, map) == 0:
+                    if self.checkImage(x, y, map) == True:
+                        return (x,y)
+        return "hi"
+                            
+                
+    def checkImage(self,x, y, map):
+        for i in range (0, self.image.size[0]):
+            for j in range (0, self.image.size[1]):
+                if self.findGridProb(x+i, y+j, map) != 0:
+                    return False
+        return True
+
+    def findGridProb(self,x, y, map): # 0 = clear, 100 = wall, -1 = unknown
+        i = int(x / map.info.resolution)
+        j = int(y / map.info.resolution)
+        if i < 0 or i >= map.info.width or j < 0 or j >= map.info.height: # is it out of bounds
+            return -1
+        return map.data[i+j*map.info.height]
