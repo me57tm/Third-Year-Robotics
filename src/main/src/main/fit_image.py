@@ -19,4 +19,22 @@ class ImageFitter(object):
         :Return:
             | (x,y) map coordinates to start drawing image
         """
+        self.position.x = []
+        self.position.y = []
+        self.position.z = []
+        
+        # RAIN(XT)
+select randomly W ⊂X
+Nt←|{i : ti = t}| for t = −1,+1
+Bi ←√MAX(N−1,N+1)/Nti for i = 1,...,NˆH ←B ·(XT W)/(⊮X + ⊮W −XT W)
+β ←
+(
+I/C + ˆHT ˆH
+)−1
+( ˆHT B ·T)
+return W,β
+PREDICT(X)
+H ←(XT W)/(⊮X + ⊮W −XT W)
+return SIGN(Hβ)#
+        
         return (0,0)
