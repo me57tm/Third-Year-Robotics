@@ -66,8 +66,8 @@ class PaintingNode(object):
         self._image_painter = main.image_painter.ImagePainter(self._paint_location, self._colour_map, self._image)
         
         #TODO Actually path to that location
-        
-        self._image_painter.drawOrMove()
+        # if at location
+        # self._image_painter.drawOrMove()
 
         self._particle_filter = main.pf.PFLocaliser()
         

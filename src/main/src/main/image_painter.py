@@ -40,9 +40,11 @@ class ImagePainter():
             # print(self.command_queue[0])
             print(x, y, rgb)
             if self.checkPosition(x,y):
+                print("in position")
                 self.paint(x, y, rgb)
                 self.command_queue.pop(0)
             else:
+                print("moving")
                 self.moveTowards(x, y)
 
     def checkPosition(self, targetx, targety):
@@ -50,8 +52,8 @@ class ImagePainter():
         cp = self.current_pose.pose.pose
         cpx = cp.position.x
         cpy = cp.position.y
-        if cpx > targetx - range or cpx < targetx + range:
-            if cpy > targety - range or cpy < targety + range:
+        if cpx > targetx - range and cpx < targetx + range:
+            if cpy > targety - range and cpy < targety + range:
                 return True
         return False
 
@@ -59,7 +61,7 @@ class ImagePainter():
         self.colour_map[y][x] = rgb
 
     def moveTowards(self, x, y):
-        cp = self.current_pose
+        cp = self.current_pose.pose.pose
         cpx = cp.position.x
         cpy = cp.position.y
         angle = math.atan2(y-cpy, x-cpx)
