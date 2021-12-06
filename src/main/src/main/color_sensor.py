@@ -16,6 +16,7 @@ class ColorSensor():
         self.map_origin_y = ( occupancy_map.info.origin.position.y +
                               (self.map_height / 2.0) * self.map_resolution )'''
         self.color_map = [[None]*self.map_height]*self.map_width
+        return self.color_map
     
     def getReading(self,x,y):
         reading = self.color_map[x,y] #these or the definition might be the wrong way round.

@@ -4,7 +4,7 @@ class ImageFitter(object):
     
     def __init__(self, image):
         self.IMAGE_RES = 0.05
-        self.image = Image.open("src/main/data/Target.png")
+        self.image = image
        
     def findLocation(self, map):
         """

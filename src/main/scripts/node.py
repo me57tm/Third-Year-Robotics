@@ -10,6 +10,7 @@ import rospy
 import main.pf
 import main.fit_image
 import main.image_painter
+import main.color_sensor
 from main.util import *
 from PIL import Image
 
@@ -34,14 +35,14 @@ class PaintingNode(object):
         self._initial_pose_received = False
         
         self._image = Image.open("src/main/data/blacksquare.png")
-        self._colour_map = False
+        self._colour_map = [[]]
 
         self._pose_publisher = rospy.Publisher("/estimatedpose", PoseStamped)
         self._amcl_pose_publisher = rospy.Publisher("/amcl_pose",
                                                     PoseWithCovarianceStamped)
         self._cloud_publisher = rospy.Publisher("/particlecloud", PoseArray)
         self._tf_publisher = rospy.Publisher("/tf", tfMessage)
-        self._cmd_vel_publisher = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
+        
 
         rospy.loginfo("Waiting for a map...")
         try:
@@ -54,16 +55,20 @@ class PaintingNode(object):
                       (ocuccupancy_map.info.width, ocuccupancy_map.info.height,
                        ocuccupancy_map.info.resolution))
         
-        self._image_fitter = main.fit_image.ImageFitter()
+        self._image_fitter = main.fit_image.ImageFitter(self._image)
         rospy.loginfo(self._image_fitter.findLocation(ocuccupancy_map))
-        
-        
-        self._paint_location = self._image_fitter.findLocation(ocuccupancy_map, self._image)
 
-        self.image_painter = main.image_painter.ImagePainter(self._paint_location, self._colour_map, self._image)
+        self._colour_sensor = main.color_sensor.ColorSensor()
+        self._colour_map = self._colour_sensor.set_map(ocuccupancy_map)
+        
+        self._paint_location = self._image_fitter.findLocation(ocuccupancy_map)
+
+        self._image_painter = main.image_painter.ImagePainter(self._paint_location, self._colour_map, self._image)
         
         #TODO Actually path to that location
         
+        self._image_painter.drawOrMove()
+
         self._particle_filter = main.pf.PFLocaliser()
         
         self._particle_filter.set_map(ocuccupancy_map)
@@ -79,7 +84,7 @@ class PaintingNode(object):
                                                      queue_size=1)
         self._truth_subscriber = rospy.Subscriber("/base_pose_ground_truth",Odometry,self._ground_truth_callback,queue_size=1)
 
-        self._cmd_vel_subscriber = rospy.Subscriber("/cmd_vel", Twist, self._cmd_vel_callback, queue_size=1)
+        
 
                                                      
         #TODO Spin off painter in its own thread, passing image.
