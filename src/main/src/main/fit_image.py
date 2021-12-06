@@ -2,9 +2,9 @@ from PIL import Image
 
 class ImageFitter(object):
     
-    def __init__(self):
+    def __init__(self, image):
         self.IMAGE_RES = 0.05
-        self.image = Image.open("src/main/data/blacksquare.png")
+        self.image = image
         
        
     def findLocation(self, map):

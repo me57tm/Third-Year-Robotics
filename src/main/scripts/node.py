@@ -9,10 +9,12 @@ pf.PFLocaliser() to do the localisation.
 import rospy
 import main.pf
 import main.fit_image
+import main.image_painter
 from main.util import *
+from PIL import Image
 
 from geometry_msgs.msg import ( PoseStamped, PoseWithCovarianceStamped,
-                                PoseArray, Quaternion, Transform, TransformStamped )
+                                PoseArray, Quaternion, Transform, TransformStamped, Twist )
 from tf.msg import tfMessage
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid, Odometry
@@ -31,13 +33,15 @@ class PaintingNode(object):
         self._last_published_pose = None
         self._initial_pose_received = False
         
-        self._image = False
+        self._image = Image.open("src/main/data/blacksquare.png")
+        self._colour_map = False
 
         self._pose_publisher = rospy.Publisher("/estimatedpose", PoseStamped)
         self._amcl_pose_publisher = rospy.Publisher("/amcl_pose",
                                                     PoseWithCovarianceStamped)
         self._cloud_publisher = rospy.Publisher("/particlecloud", PoseArray)
         self._tf_publisher = rospy.Publisher("/tf", tfMessage)
+        self._cmd_vel_publisher = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
 
         rospy.loginfo("Waiting for a map...")
         try:
@@ -54,7 +58,9 @@ class PaintingNode(object):
         print(self._image_fitter.findLocation(ocuccupancy_map))
         
         
-        self._paint_location = self._image_fitter.findLocation(ocuccupancy_map)
+        self._paint_location = self._image_fitter.findLocation(ocuccupancy_map, self._image)
+
+        self.image_painter = main.image_painter.ImagePainter(self._paint_location, self._colour_map, self._image)
         
         #TODO Actually path to that location
         
@@ -72,6 +78,8 @@ class PaintingNode(object):
                                                      self._odometry_callback,
                                                      queue_size=1)
         self._truth_subscriber = rospy.Subscriber("/base_pose_ground_truth",Odometry,self._ground_truth_callback,queue_size=1)
+
+        self._cmd_vel_subscriber = rospy.Subscriber("/cmd_vel", Twist, self._cmd_vel_callback, queue_size=1)
 
                                                      
         #TODO Spin off painter in its own thread, passing image.
@@ -124,6 +132,9 @@ class PaintingNode(object):
         Laser received. Store a ref to the latest scan. 
         """
         self._latest_scan = scan
+
+    def _cmd_vel_callback(self, twist):
+        pass
 
 if __name__ == '__main__':
     # --- Main Program  ---
