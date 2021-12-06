@@ -51,7 +51,7 @@ class PaintingNode(object):
                        ocuccupancy_map.info.resolution))
         
         self._image_fitter = main.fit_image.ImageFitter()
-        print(self._image_fitter.findLocation(ocuccupancy_map))
+        rospy.loginfo(self._image_fitter.findLocation(ocuccupancy_map))
         
         
         self._paint_location = self._image_fitter.findLocation(ocuccupancy_map)

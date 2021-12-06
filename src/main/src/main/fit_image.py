@@ -4,7 +4,7 @@ class ImageFitter(object):
     
     def __init__(self):
         self.IMAGE_RES = 0.05
-        self.image = Image.open("src/main/data/blacksquare.png")
+        self.image = Image.open("src/main/data/Target.png")
         
        
     def findLocation(self, map):
@@ -19,12 +19,13 @@ class ImageFitter(object):
         :Return:
             | (x,y) map coordinates to start drawing image
         """
-        for x in range (0, map.info.width):
-            for y in range (0, map.info.height):
+        robotBuffer = int(1.2/map.info.resolution)#0.45 for robot sized buffer 0.6 is for extra space 1.2 is for both sides of image
+        print(robotBuffer)
+        for x in range (0, map.info.width + robotBuffer): 
+            for y in range (0, map.info.height + robotBuffer):
                 if self.findGridProb(x, y, map) == 0:
-                    print("made it to loop")
                     if self.checkImage(x, y, map) == True:
-                        return (x,y)
+                        return (x + robotBuffer//2,y + robotBuffer//2)
         return "hi"
                             
                 
