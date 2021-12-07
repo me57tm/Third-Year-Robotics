@@ -53,7 +53,7 @@ class ImagePainter(threading.Thread):
                 self.paint(x, y, rgb)
                 self.command_queue.pop(0)
             else:
-                self.moveTowards(x, y)
+                pass#self.moveTowards(x, y)
 
     def checkPosition(self, targetx, targety):
         prange = 5
@@ -75,11 +75,11 @@ class ImagePainter(threading.Thread):
         cpx = cp.position.x
         cpy = cp.position.y
         cpr = getHeading(cp.orientation)
-        print("Goal:", x, y, "Current:", cpx, cpy)
+        #print("Goal:", x, y, "Current:", cpx, cpy)
         angle = math.atan2(y-cpy, x-cpx)
         distance = math.sqrt(((x-cpx)*(x-cpx)) +((y-cpy)*(y-cpy)))
         twista = Twist()
-        twista.linear.x = 0.05
+        twista.linear.x = 0.5
         twista.angular.z = (angle - cpr)
         t=0.1
         #i=0
@@ -94,5 +94,5 @@ class ImagePainter(threading.Thread):
         #    self._cmd_vel_publisher.publish(twistd)
         #    rospy.sleep(t)
         #    i = i + t
-        print("angle, cpr:", angle, cpr, "Angle:", angle - cpr)
+        #print("angle, cpr:", angle, cpr, "Angle:", angle - cpr)
         

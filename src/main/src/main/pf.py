@@ -28,6 +28,7 @@ class PFLocaliser(object):
     def __init__(self):
         # ----- Initialise fields
         self.estimatedpose =  PoseWithCovarianceStamped()
+        self.weights = None
         self.occupancy_map = OccupancyGrid()
         self.particlecloud =  PoseArray()
         self.tf_message = tfMessage()
@@ -136,6 +137,7 @@ class PFLocaliser(object):
             self.update_particle_cloud(scan)
             self.particlecloud.header.frame_id = "map"
             self.estimatedpose.pose.pose = self.estimate_pose()
+            self.getConfidence()
             currentTime = rospy.Time.now()
             
             # ----- Given new estimated pose, now work out the new transform
@@ -151,6 +153,7 @@ class PFLocaliser(object):
     def update_particle_cloud(self, scan):
         #Get Weights and Normalise
         weightList = [self.sensor_model.get_weight(scan, particle) for particle in self.particlecloud.poses]
+        self.weights = weightList
         totalWeight = sum(weightList)
         
         #Resample
@@ -164,7 +167,7 @@ class PFLocaliser(object):
                 u += 1/self.NUM_PARTICLES
             else:
                 i = i + 1
-                if i == self.NUM_PARTICLES:
+                if i == len(weightList):#self.NUM_PARTICLES:
                 	break
                 c = c + weightList[i] / totalWeight
         newPoseArray = self.addGausian(self.GAUSS_POSITION_SIGMA,self.GAUSS_ANGLE_SIGMA,newPoseArray)
@@ -417,3 +420,52 @@ class PFLocaliser(object):
         if i < 0 or i >= self.occupancy_map.info.width or j < 0 or j >= self.occupancy_map.info.height: # is it out of bounds
             return -1
         return self.occupancy_map.data[i+j*self.occupancy_map.info.height]
+        
+    def getConfidence(self):
+        #Particles in range of estimate
+        ex = self.estimatedpose.pose.pose.position.x
+        ey = self.estimatedpose.pose.pose.position.y
+        rangeThreshold = 2.5
+        goodPoses = 0
+        for p in self.particlecloud.poses:
+            if p.position.x > ex-rangeThreshold and p.position.x < ex+rangeThreshold and p.position.y > ey-rangeThreshold and p.position.y < ey+rangeThreshold:
+                goodPoses+=1
+        pc = goodPoses/(len(self.particlecloud.poses)*(1-(self.MUTATION_PERCENTAGE/100)))
+        print("PC:",pc)
+        if pc == 0:
+            pc = 0.5
+        if pc > 1:
+            pc = 1
+        
+        #Movement of esitmate - Might not be possible
+        
+        #Weight of particles
+        wavg = 0
+        for w in self.weights:
+            wavg += w/6#TODO: Terrible magic number we should calculate properly at some point
+        wc = wavg/len(self.weights)
+        if wc > 1:
+            wc = 1
+        print("WC:",wc)
+        m = max(self.weights)
+        print("Maximum Weight:", m)
+        tc = (pc+wc+(m/16))/3
+        if tc > 1:
+            tc  = 1
+        print("Total Confidence:",tc,self.NUM_PARTICLES)
+        self.NUM_PARTICLES = int(20+800*(1-tc))
+        if tc < 0.6:
+            self.MUTATION_PERCENTAGE = 10
+        elif tc < 0.4:
+            self.MUTATION_PERCENTAGE = 25
+        elif tc > 0.8:
+            self.MUTATION_PERCENTAGE = 1
+        elif tc > 0.9:
+            self.MUTATION_PERCENTAGE = 0
+        else:
+            self.MUTATION_PERCENTAGE = 5
+        self.GAUS_POSITION_SIGMA = 0.1*(1-tc)
+    
+
+
+
