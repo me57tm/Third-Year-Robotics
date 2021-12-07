@@ -56,10 +56,10 @@ class ImagePainter(threading.Thread):
                 self.moveTowards(x, y)
 
     def checkPosition(self, targetx, targety):
-        prange = 1
+        prange = 5
         cp = self.latest_pose_estimate.pose
-        cpx = cp.position.x
-        cpy = cp.position.y
+        cpx = cp.position.x/self.map.info.resolution
+        cpy = cp.position.y/self.map.info.resolution
         if cpx > targetx - prange and cpx < targetx + prange:
             if cpy > targety - prange and cpy < targety + prange:
                 return True
@@ -79,12 +79,20 @@ class ImagePainter(threading.Thread):
         angle = math.atan2(y-cpy, x-cpx)
         distance = math.sqrt(((x-cpx)*(x-cpx)) +((y-cpy)*(y-cpy)))
         twista = Twist()
-        twista.angular.z = angle - cpr
+        twista.linear.x = 0.05
+        twista.angular.z = (angle - cpr)
+        t=0.1
+        #i=0
+        #while i<1:
         self._cmd_vel_publisher.publish(twista)
-        rospy.sleep(1)
-        twistd = Twist()
-        twistd.linear.x = distance
-        self._cmd_vel_publisher.publish(twistd)
-        rospy.sleep(1)
-        print("Distance:", distance, "Angle:", angle - cpr)
+        rospy.sleep(t)
+        #    i = i + t
+        #twistd = Twist()
+        #twistd.linear.x = distance
+        #i=0
+        #while i<1:
+        #    self._cmd_vel_publisher.publish(twistd)
+        #    rospy.sleep(t)
+        #    i = i + t
+        print("angle, cpr:", angle, cpr, "Angle:", angle - cpr)
         

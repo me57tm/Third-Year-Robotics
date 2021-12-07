@@ -18,7 +18,7 @@ class ImageFitter(object):
         :Return:
             | (x,y) map coordinates to start drawing image
         """
-        robotBuffer = int(1.2/map.info.resolution)#0.45 for robot sized buffer 0.6 is for extra space 1.2 is for both sides of image
+        robotBuffer = int(4/map.info.resolution)#0.45 for robot sized buffer 0.6 is for extra space 1.2 is for both sides of image
         print(robotBuffer)
         for x in range (0, map.info.width + robotBuffer): 
             for y in range (0, map.info.height + robotBuffer):
