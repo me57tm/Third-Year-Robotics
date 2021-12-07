@@ -42,7 +42,6 @@ class ImagePainter(threading.Thread):
     def drawOrMove(self):
         rospy.loginfo("you!")
         while(len(self.command_queue) > 0):
-            # TODO get estimated pose
             self.latest_pose_estimate = rospy.wait_for_message("/estimatedpose", PoseStamped, timeout=None)
             # if we are at the correct position, draw the pixel and pop the current command
             # if not then move to the correct position

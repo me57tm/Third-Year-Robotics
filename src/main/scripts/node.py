@@ -11,6 +11,7 @@ import main.pf
 import main.fit_image
 import main.image_painter
 import main.color_sensor
+import main.navigator
 from main.util import *
 from PIL import Image
 
@@ -64,8 +65,9 @@ class PaintingNode(object):
 
         rospy.loginfo(self._paint_location)
         
-        #TODO Actually path to that location
-
+        self._nav_thread = main.navigator.Navigator(1, "Navigator", 1, self._paint_location, ocuccupancy_map)
+        rospy.loginfo("Made pathing thread")
+        
         self._particle_filter = main.pf.PFLocaliser()
         
         self._particle_filter.set_map(ocuccupancy_map)
@@ -80,13 +82,9 @@ class PaintingNode(object):
                                                      self._odometry_callback,
                                                      queue_size=1)
         self._truth_subscriber = rospy.Subscriber("/base_pose_ground_truth",Odometry,self._ground_truth_callback,queue_size=1)
-
-        
-
                                                      
-        self._painter_thread = main.image_painter.ImagePainter(1, "Painter", 1, self._paint_location, self._colour_map, self._image, ocuccupancy_map)
-        self._painter_thread.start()
-        rospy.loginfo("Threading Worked")
+        #self._painter_thread = main.image_painter.ImagePainter(2, "Painter", 2, self._paint_location, self._colour_map, self._image, ocuccupancy_map)
+        #self._painter_thread.start()
 
     def _initial_pose_callback(self, pose):
         """ called when RViz sends a user supplied initial pose estimate """
@@ -94,6 +92,7 @@ class PaintingNode(object):
         self._last_published_pose = deepcopy(self._particle_filter.estimatedpose)
         self._initial_pose_received = True
         self._cloud_publisher.publish(self._particle_filter.particlecloud)
+        self._nav_thread.start()
 
     def _odometry_callback(self, odometry):
         """
