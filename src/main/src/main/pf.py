@@ -39,7 +39,7 @@ class PFLocaliser(object):
         self.ODOM_TRANSLATION_NOISE = 0 	# Odometry x axis (forward) noise
         self.ODOM_DRIFT_NOISE = 0 			# Odometry y axis (side-side) noise
         self.NUMBER_PREDICTED_READINGS = 20 # Number of readings to predict
-        self.NUM_PARTICLES = 300
+        self.NUM_PARTICLES = 500
         self.VALID_POINTS = []  #A List of valid map points which you may wish to take a sample from to get random points. Not for use to detect if a point is valid.
         self.GAUSS_POSITION_SIGMA = 0.05
         self.GAUSS_ANGLE_SIGMA = math.pi/8

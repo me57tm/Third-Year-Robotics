@@ -2,7 +2,7 @@ from geometry_msgs.msg import  (PoseStamped, Pose, PoseWithCovarianceStamped, Tw
 import threading
 import rospy
 import math
-from . util import getHeading
+from . util import (getHeading, rotateQuaternion)
 import csv
 
 class Navigator(threading.Thread):
@@ -18,9 +18,8 @@ class Navigator(threading.Thread):
         self.grid_res = map.info.width//60
         self.goal_coord = goal_coord
         self.goal_grid = (goal_coord[0]//self.grid_res, goal_coord[1]//self.grid_res)
-        
+        self.rate = rospy.Rate(25)
         self.nav_grid = []
-        rospy.loginfo("first loop")
         for i in range (0, map.info.width//self.grid_res):
             blank = []
             for j in range (0, map.info.height//self.grid_res):
@@ -29,16 +28,10 @@ class Navigator(threading.Thread):
 
         x = 0
         y = 0
-        rospy.loginfo("second loop")
         for x in range (0, map.info.width//self.grid_res):
             for y in range (0, map.info.height//self.grid_res):
-                print(x, y)
                 self.nav_grid[x][y] = self.checkGridCell(x, y)
-        rospy.loginfo("done")
-        with open("new_file.csv","w+") as my_csv:
-            csvWriter = csv.writer(my_csv,delimiter=',')
-            csvWriter.writerows(self.nav_grid)
-        print(self.goal_coord)
+        rospy.loginfo("Made Nav Grid")
         print(self.goal_grid)
         print(self.nav_grid[self.goal_grid[0]][self.goal_grid[1]])     
     def checkGridCell(self, x, y):
@@ -46,7 +39,6 @@ class Navigator(threading.Thread):
             for j in range (0, self.grid_res):
                 if self.findGridProb(x*self.grid_res+i, y*self.grid_res+j) != 0:
                     return False
-        rospy.loginfo("Found a clear cell")
         return True        
         
     def run(self):
@@ -73,7 +65,6 @@ class Navigator(threading.Thread):
                     current_i = i
             open_list.pop(current_i)
             closed_list.append(current_square)
-            print(current_square)
             if current_square[0] == self.goal_grid[0] and current_square[1] == self.goal_grid[1]:
                 print("found path")
                 path = []
@@ -82,21 +73,15 @@ class Navigator(threading.Thread):
                     current_square = current_square[4]
                 return path[::-1]
             for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
-                print("does for at least")
                 new_x = current_square[0] + new_position[0]
                 new_y = current_square[1] + new_position[1]
                 if new_x < len(self.nav_grid) and new_y < len(self.nav_grid[0]):
-                    print("new positions in grid")
-                    print(self.nav_grid[new_x])
                     if self.nav_grid[new_x][new_y]:
-                        print("non walled value")
                         closed = False
                         for closed_square in closed_list:
                             if closed_square[0] == new_x and closed_square[1] == new_y:
                                 closed = True
-                                print("oh is this it?")
                                 break
-                        print("closed bit")
                         if not closed:
                             h = (new_x-self.goal_grid[0])**2 + (new_y-self.goal_grid[1])**2
                             child = (new_x, new_y, current_square[2] + 1, h, current_square)
@@ -109,22 +94,24 @@ class Navigator(threading.Thread):
                                 open_list.append(child)
         
     def navigate(self):
-        self.command_queue = self.generatePath()
-        print(self.command_queue)
-        while(len(self.command_queue) > 0):
-            self.latest_pose_estimate = rospy.wait_for_message("/estimatedpose", PoseStamped, timeout=None)
-            # if we are at the correct position, draw the pixel and pop the current command
-            # if not then move to the correct position
-            x, y = self.command_queue[0]
-            # print(self.command_queue[0])
-            if self.checkPosition(x,y):
-                print("in position")
-                self.command_queue.pop(0)
-            else:
-                self.moveTowards(x, y)
+        self.latest_pose_estimate = rospy.wait_for_message("/estimatedpose", PoseStamped, timeout=None)
+        while not self.checkPosition(self.goal_coord[0], self.goal_coord[1]):
+            self.command_queue = self.generatePath()
+            print(self.command_queue)
+            while(len(self.command_queue) > 0):
+                self.latest_pose_estimate = rospy.wait_for_message("/estimatedpose", PoseStamped, timeout=None)
+                # if we are at the correct position, pop the current command
+                # if not then move to the correct position
+                x, y = self.command_queue[0]
+                # print(self.command_queue[0])
+                if self.checkPosition(x,y):
+                    print("in position")
+                    self.command_queue.pop(0)
+                else:
+                    self.moveTowards(x, y)
 
     def checkPosition(self, targetx, targety):
-        prange = 5
+        prange = 3
         cp = self.latest_pose_estimate.pose
         cpx = cp.position.x/self.map.info.resolution
         cpy = cp.position.y/self.map.info.resolution
@@ -139,25 +126,76 @@ class Navigator(threading.Thread):
         cp = self.latest_pose_estimate.pose
         cpx = cp.position.x
         cpy = cp.position.y
-        cpr = getHeading(cp.orientation)
-        angle = math.atan2(y-cpy, x-cpx)
+        cpquat = cp.orientation
+        #sorting out the angles and distance
+        cpr = getHeading(cp.orientation) # current angle
+        print("Initial Heading:", cpr)
+        angle = (math.atan2((y-cpy), (x-cpx))) # goal angle
+        if angle < 0: #converting goal angle from 0->180 -180->-360 to 0->360
+            angle = (2*math.pi) + angle
+        if cpr < 0: # as we did with goal angle
+            cpr = (2*math.pi) + cpr
+        correction_angle = (angle - cpr)
+        if math.degrees(correction_angle) > 180: #if we're turning over 180deg left or right, take the opposite direction
+            correction_angle =  2*math.pi - correction_angle
+        elif math.degrees(correction_angle) < -180:
+            correction_angle = 2*math.pi + correction_angle
         distance = math.sqrt(((x-cpx)*(x-cpx)) +((y-cpy)*(y-cpy)))
+        if distance > 1:
+            self.command_queue = []
+            print("bad pose estimate, repathing")
+            return
+        #on an arc, 2x an angle corrects for movement during rotation
+        arcradius = distance/(2*math.sin(correction_angle)) #distance to centre of imaginary circle of which the robot's path is an arc
+        arclength = arcradius*2*correction_angle #length of the arc to be moved down
+        arctime = 4 #time to execute the maneuver in seconds (must be capable of turning pi radians in this time)
+        rotationalvel = (2*correction_angle)/arctime
+        forwardvel = arclength/arctime
+        rotationalvel = correction_angle/arctime
+        forwardvel = 0.15
+        twist = Twist()
+        twist.linear.x = 0
+        twist.angular.z = rotationalvel
+        print("Correctional Heading:", angle)
+        print("Correctional Distance:", distance)
+        print("Arc Radius: ", arcradius)
+        print("Angular Vel: ", rotationalvel)
+        print("Forward Vel: ", forwardvel)
+        # send movement commands to the bot
         twista = Twist()
-        twista.linear.x = 0.05
-        twista.angular.z = (angle - cpr)
-        t=0.1
-        #i=0
-        #while i<1:
+        # move once the current and goal angles are alligned to 2dp otherwise correct the angle
+        if math.floor(10*cpr) == math.floor(10*angle):
+            print("moving:", distance)
+            twista.linear.x = 2*distance
+            twista.angular.z = 0
+        else:
+            print("turning", math.degrees(correction_angle))
+            twista.linear.x = 0
+            twista.angular.z = 2*correction_angle
         self._cmd_vel_publisher.publish(twista)
-        rospy.sleep(t)
-        #    i = i + t
-        #twistd = Twist()
-        #twistd.linear.x = distance
+        self.rate.sleep()
+        
+        #t=0.2
         #i=0
-        #while i<1:
-        #    self._cmd_vel_publisher.publish(twistd)
+        #while i < arctime:
+        #    self._cmd_vel_publisher.publish(twist)
         #    rospy.sleep(t)
         #    i = i + t
+        #twist.linear.x = 0
+        #twist.angular.z = 0
+        #self._cmd_vel_publisher.publish(twist)
+        #
+        #twist.linear.x = forwardvel
+        #twist.angular.z = 0
+        #t=0.1
+        #i=0
+        #while i < arctime:
+        #    self._cmd_vel_publisher.publish(twist)
+        #    rospy.sleep(t)
+        #    i = i + t
+        #twist.linear.x = 0
+        #twist.angular.z = 0
+        #self._cmd_vel_publisher.publish(twist)
 
     def findGridProb(self,x, y): # 0 = clear, 100 = wall, -1 = unknown
         if x < 0 or x >= self.map.info.width or y < 0 or y >= self.map.info.height: # is it out of bounds
