@@ -35,6 +35,8 @@ class ImagePainter(threading.Thread):
         self.output_image.save("images/before.png", "PNG")
         self.generateCommands(starting_coord)
         self._cmd_vel_publisher = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
+        # "hyper paramaters"
+        self.prange = 0 # lower the number more accurate the painting but takes longer per pixel
         
     def run(self):
         self.drawOrMove()
@@ -42,22 +44,25 @@ class ImagePainter(threading.Thread):
     def generateCommands(self, starting_coord):
         for y in range(starting_coord[1], starting_coord[1] + self.image.size[1]):
             for x in range(starting_coord[0], starting_coord[0] + self.image.size[0]):
-                rgb = self.image.getpixel(((x-starting_coord[0])/self.image.size[0],(y-starting_coord[1])/self.image.size[1]))
+                pixelx = x-starting_coord[0]
+                pixely = y-starting_coord[1]
+                rgb = self.image.getpixel((pixelx,pixely))
                 self.command_queue.append((x,y,rgb))
         
     def drawOrMove(self):
         rospy.loginfo("you!")
         
         if self.debug_image_generation:
+            print("saved goal image")
             for command in self.command_queue:
                 x,y,rgb = command
-                self.paint(x,y,rgb)
+                self.paint(x,y,(0, 0, 255))
             array2 = numpy.array(self.colour_map)
             self.output_image = Image.fromarray(array2, "RGB")
             self.output_image.save("images/goal.png", "PNG")
-            # for command in self.command_queue:
-            #     x,y,rgb = command
-            #     self.paint(x,y,(255,255,255))
+            for command in self.command_queue:
+                x,y,rgb = command
+                self.paint(x,y,(255,255,255))
             self.debug_image_generation = False
             
         while(len(self.command_queue) > 0):
@@ -65,38 +70,31 @@ class ImagePainter(threading.Thread):
             cp = self.latest_pose_estimate.pose
             cpx = cp.position.x/self.map.info.resolution
             cpy = cp.position.y/self.map.info.resolution
-            # if we are at the correct position, draw the pixel and pop the current command
-            # if not then move to the correct position
             x, y, rgb = self.command_queue[0]
-            if self.checkPosition(x,y):
-                if  self.paint(round(cpx), round(cpy), (0, 0, 255)):
-                    if len(self.command_queue)%50 == 0:
+            if self.checkPosition(x,y):     # if we are at the correct position, draw the pixel and pop the current command
+                if  self.paint(round(cpx), round(cpy), rgb):
+                    if len(self.command_queue)%self.image.size[0] == 0:
                         array3 = numpy.array(self.colour_map)
                         self.output_image = Image.fromarray(array3, "RGB")
                         self.output_image.save("images/during"+str(len(self.command_queue))+".png", "PNG")
-                    print("in position", len(self.command_queue))
                     self.command_queue.pop(0)
-                else:
+                    print("pixels remaining:", len(self.command_queue))
+                else:   # if not then move to the correct position
                     print("already painted")
                     # move the bot slightly to get out of here asap
                     twist = Twist()
-                    twist.linear.x = 0.05
+                    twist.linear.x = 0.1
                     self._cmd_vel_publisher.publish(twist)
-                    continue
             else:
                 self.moveTowards(x, y)
-        array4 = numpy.array(self.colour_map)
-        self.output_image = Image.fromarray(array4, "RGB")
-        self.output_image.save("images/finished.png", "PNG")
-
-    def checkPosition(self, targetx, targety):
-        prange = 5
-        cp = self.latest_pose_estimate.pose
-        cpx = round(cp.position.x/self.map.info.resolution)
-        cpy = round(cp.position.y/self.map.info.resolution)
+        print("finished image")
         if cpx > targetx - prange and cpx < targetx + prange:
             if cpy > targety - prange and cpy < targety + prange:
                 return True
+        distance = math.sqrt(((targetx-cpx)*(targetx-cpx)) +((targety-cpy)*(targety-cpy)))
+        print("Pixel Distance:", math.floor(distance))
+        if math.floor(distance) <= self.prange:
+            return True
         return False
 
     def paint(self, x, y, rgb):
@@ -131,8 +129,8 @@ class ImagePainter(threading.Thread):
         distance = math.sqrt(((newx-cpx)*(newx-cpx)) +((newy-cpy)*(newy-cpy)))
 
         print("Goal:", x, y, "Current:", cpx/self.map.info.resolution, cpy/self.map.info.resolution)
-        print("Distance:", distance)
         print("Goal Angle:", math.degrees(angle), "Current Angle:", math.degrees(cpr))
+
         # send movement commands to the bot
         twista = Twist()
         # move once the current and goal angles are alligned to 2dp otherwise correct the angle
