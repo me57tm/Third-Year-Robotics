@@ -14,6 +14,7 @@ import main.color_sensor
 import main.navigator
 from main.util import *
 from PIL import Image
+import numpy as np
 
 from geometry_msgs.msg import ( PoseStamped, PoseWithCovarianceStamped,
                                 PoseArray, Quaternion, Transform, TransformStamped, Twist )
@@ -35,8 +36,8 @@ class PaintingNode(object):
         self._last_published_pose = None
         self._initial_pose_received = False
         
-        self._image = Image.open("src/main/data/blacksquare.png")
-        self._colour_map = [[]]
+        self._image = Image.open("src/main/data/face.png")
+        
 
         self._pose_publisher = rospy.Publisher("/estimatedpose", PoseStamped)
         self._amcl_pose_publisher = rospy.Publisher("/amcl_pose",
@@ -57,15 +58,21 @@ class PaintingNode(object):
                        ocuccupancy_map.info.resolution))
         
         self._image_fitter = main.fit_image.ImageFitter(self._image)
-
-        self._colour_map = [[None]*ocuccupancy_map.info.height]*ocuccupancy_map.info.width#This may or may not be the wrong way round
+        height = ocuccupancy_map.info.height
+        width = ocuccupancy_map.info.width
+        self._colour_map = np.zeros((height, width, 3), dtype=np.uint8)
+        self._colour_map[0:height][0:width] = [255, 255, 255]
+        #self._colour_map = [[None]*ocuccupancy_map.info.height]*ocuccupancy_map.info.width#This may or may not be the wrong way round
+        # for xrow in self._colour_map:
+        #     for i in range(0, len(xrow)):
+        #         xrow[i] = (255, 255, 255)
         self._colour_sensor = main.color_sensor.ColorSensor(self._colour_map)
         
         self._paint_location = self._image_fitter.findLocation(ocuccupancy_map)
 
         rospy.loginfo(self._paint_location)
         
-        self._nav_thread = main.navigator.Navigator(1, "Navigator", 1, self._paint_location, ocuccupancy_map)
+        #self._nav_thread = main.navigator.Navigator(1, "Navigator", 1, self._paint_location, ocuccupancy_map)
         rospy.loginfo("Made pathing thread")
         
         self._particle_filter = main.pf.PFLocaliser()
@@ -83,8 +90,8 @@ class PaintingNode(object):
                                                      queue_size=1)
         self._truth_subscriber = rospy.Subscriber("/base_pose_ground_truth",Odometry,self._ground_truth_callback,queue_size=1)
                                                      
-        #self._painter_thread = main.image_painter.ImagePainter(2, "Painter", 2, self._paint_location, self._colour_map, self._image, ocuccupancy_map)
-        #self._painter_thread.start()
+        self._painter_thread = main.image_painter.ImagePainter(2, "Painter", 2, self._paint_location, self._colour_map, self._image, ocuccupancy_map)
+        self._painter_thread.start()
 
     def _initial_pose_callback(self, pose):
         """ called when RViz sends a user supplied initial pose estimate """

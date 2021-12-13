@@ -5,6 +5,7 @@ class ImageFitter(object):
     def __init__(self, image):
         self.IMAGE_RES = 0.05
         self.image = image
+        self.robotBuffer = 0
        
     def findLocation(self, map):
         """
@@ -18,19 +19,19 @@ class ImageFitter(object):
         :Return:
             | (x,y) map coordinates to start drawing image
         """
-        robotBuffer = int(4/map.info.resolution)#0.45 for robot sized buffer 0.6 is for extra space 1.2 is for both sides of image
-        print(robotBuffer)
-        for x in range (0, map.info.width + robotBuffer): 
-            for y in range (0, map.info.height + robotBuffer):
+        self.robotBuffer = int(2/map.info.resolution)#0.45 for robot sized buffer 0.6 is for extra space 1.2 is for both sides of image
+        print(self.robotBuffer)
+        for x in range (0, map.info.width + self.robotBuffer): 
+            for y in range (0, map.info.height + self.robotBuffer):
                 if self.findGridProb(x, y, map) == 0:
                     if self.checkImage(x, y, map) == True:
-                        return (x + robotBuffer//2,y + robotBuffer//2)
+                        return (x + self.robotBuffer,y + self.robotBuffer)
         return "hi"
                             
                 
-    def checkImage(self,x, y, map):
-        for i in range (0, self.image.size[0]):
-            for j in range (0, self.image.size[1]):
+    def checkImage(self,x, y, map): # check the image and a buffer around each edge of the image fits without touching a wall
+        for i in range (0, self.image.size[0] + self.robotBuffer):
+            for j in range (0, self.image.size[1] + self.robotBuffer):
                 if self.findGridProb(x+i, y+j, map) != 0:
                     return False
         return True
