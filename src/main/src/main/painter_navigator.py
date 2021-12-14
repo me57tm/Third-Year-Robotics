@@ -30,7 +30,7 @@ class PainterNavigator(threading.Thread):
         for x in range(0, self.map.info.width):
             for y in range(0, self.map.info.height):
                 if self.findGridProb(x,y) == 100:
-                    self.colour_map[x][y] = [120, 120, 120]
+                    self.colour_map[x][y] = [255, 0, 0]
 
         array1 = numpy.array(self.colour_map)
         self.output_image = Image.fromarray(array1, "RGB")
