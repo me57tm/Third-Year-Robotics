@@ -258,26 +258,6 @@ class PainterNavigator(threading.Thread):
             twista.angular.z = correction_angle
         self._cmd_vel_publisher.publish(twista)
         self.rate.sleep()
-        if distance > 1:
-            print("bad pose estimate, repathing")
-            return True
-        time = 4 #time to execute the maneuver in seconds (must be capable of turning pi radians in this time)
-        # send movement commands to the bot
-        twista = Twist()
-        # move once the current and goal angles are alligned to 2dp otherwise correct the angle
-        if math.floor(10*cpr) == math.floor(10*angle):
-            #print("moving:", distance)
-            twista.linear.x = distance
-            twista.angular.z = 0
-        else:
-            #print("turning", math.degrees(correction_angle))
-            twista.linear.x = 0
-            twista.angular.z = correction_angle
-        self._cmd_vel_publisher.publish(twista)
-        self.rate.sleep()
-        twista.linear.x = 0
-        twista.linear.x = 0
-        self._cmd_vel_publisher.publish(twista)
         return False
         
     def paint(self, x, y, rgb):
