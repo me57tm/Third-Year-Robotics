@@ -25,11 +25,11 @@ class PainterNavigator(threading.Thread):
         self.output_image = False
         self.latest_pose_estimate = Pose()
         self.debug_image_generation = True
-        self.rate = rospy.Rate(100)
+        self.rate = rospy.Rate(50)
         value = self.image.getpixel((0,0))
         for x in range(0, self.map.info.width):
             for y in range(0, self.map.info.height):
-                if self.findGridProb(x,y) == 50:
+                if self.findGridProb(x,y) == 100:
                     self.colour_map[x][y] = [120, 120, 120]
 
         array1 = numpy.array(self.colour_map)
