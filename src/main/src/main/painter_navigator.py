@@ -25,11 +25,11 @@ class PainterNavigator(threading.Thread):
         self.output_image = False
         self.latest_pose_estimate = Pose()
         self.debug_image_generation = True
-        self.rate = rospy.Rate(50)
+        self.rate = rospy.Rate(100)
         value = self.image.getpixel((0,0))
         for x in range(0, self.map.info.width):
             for y in range(0, self.map.info.height):
-                if self.findGridProb(x,y) == 100:
+                if self.findGridProb(x,y) == 50:
                     self.colour_map[x][y] = [120, 120, 120]
 
         array1 = numpy.array(self.colour_map)
@@ -58,14 +58,15 @@ class PainterNavigator(threading.Thread):
         print(self.nav_grid[self.goal_grid[0]][self.goal_grid[1]])   
   
     def checkGridCell(self, x, y):
-        for i in range (0, self.grid_res):
-            for j in range (0, self.grid_res):
+        for i in range (-5, 15):
+            for j in range (-5, 15):
                 if self.findGridProb(x*self.grid_res+i, y*self.grid_res+j) != 0:
                     return False
         return True
     
     def run(self):
         rospy.sleep(20)
+        cached_prange = 0
         cached_prange = self.prange
         self.prange = 3
         self.navigate(self.goal_coord[0], self.goal_coord[1])
@@ -101,7 +102,7 @@ class PainterNavigator(threading.Thread):
                     path.append((current_square[0]*self.grid_res+self.grid_res//2,current_square[1]*self.grid_res+self.grid_res//2))
                     current_square = current_square[4]
                 return path[::-1]
-            for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+            for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (1, 1), (-1, 1), (1, -1)]:
                 new_x = current_square[0] + new_position[0]
                 new_y = current_square[1] + new_position[1]
                 if new_x < len(self.nav_grid) and new_y < len(self.nav_grid[0]):
@@ -186,9 +187,9 @@ class PainterNavigator(threading.Thread):
                         self.output_image = Image.fromarray(array3, "RGB")
                         self.output_image.save("images/during"+str(len(self.command_queue))+".png", "PNG")
                     self.command_queue.pop(0)
-                    #print("pixels remaining:", len(self.command_queue))
+                    print("pixels remaining:", len(self.command_queue))
                 else:   # if not then move to the correct position
-                    #print("already painted")
+                    print("already painted")
                     # move the bot slightly to get out of here asap
                     twist = Twist()
                     twist.linear.x = 0.1
@@ -202,7 +203,7 @@ class PainterNavigator(threading.Thread):
                     self.command_queue = []
                     self.navigate(x, y)
                     self.command_queue = cached_queue
-        #print("finished image")
+        print("finished image")
         array4 = numpy.array(self.colour_map)
         self.output_image = Image.fromarray(array4, "RGB")
         self.output_image.save("images/finished.png", "PNG")
@@ -212,7 +213,7 @@ class PainterNavigator(threading.Thread):
         cpx = round(cp.position.x/self.map.info.resolution)
         cpy = round(cp.position.y/self.map.info.resolution)
         distance = math.sqrt(((targetx-cpx)*(targetx-cpx)) +((targety-cpy)*(targety-cpy)))
-        #print("Pixel Distance:", math.floor(distance))
+        print("Pixel Distance:", math.floor(distance))
         if math.floor(distance) <= self.prange:
             return True
         return False
@@ -241,8 +242,8 @@ class PainterNavigator(threading.Thread):
         if distance > 1:
             print("bad pose estimate, repathing")
             return True
-        #print("Goal:", x, y, "Current:", cpx/self.map.info.resolution, cpy/self.map.info.resolution)
-        #print("Goal Angle:", math.degrees(angle), "Current Angle:", math.degrees(cpr))
+        print("Goal:", x, y, "Current:", cpx/self.map.info.resolution, cpy/self.map.info.resolution)
+        print("Goal Angle:", math.degrees(angle), "Current Angle:", math.degrees(cpr))
 
         # send movement commands to the bot
         twista = Twist()
@@ -252,21 +253,15 @@ class PainterNavigator(threading.Thread):
             twista.linear.x = distance
             twista.angular.z = 0
         else:
-            #print("turning", math.degrees(correction_angle))
+            print("turning", math.degrees(correction_angle))
             twista.linear.x = 0
             twista.angular.z = correction_angle
         self._cmd_vel_publisher.publish(twista)
         self.rate.sleep()
         if distance > 1:
-            self.command_queue = []
             print("bad pose estimate, repathing")
             return True
-        #on an arc, 2x an angle corrects for movement during rotation
-        arcradius = distance/(2*math.sin(correction_angle)) #distance to centre of imaginary circle of which the robot's path is an arc
-        arclength = arcradius*2*correction_angle #length of the arc to be moved down
-        arctime = 4 #time to execute the maneuver in seconds (must be capable of turning pi radians in this time)
-        rotationalvel = (2*correction_angle)/arctime
-        forwardvel = arclength/arctime
+        time = 4 #time to execute the maneuver in seconds (must be capable of turning pi radians in this time)
         # send movement commands to the bot
         twista = Twist()
         # move once the current and goal angles are alligned to 2dp otherwise correct the angle
@@ -280,6 +275,9 @@ class PainterNavigator(threading.Thread):
             twista.angular.z = correction_angle
         self._cmd_vel_publisher.publish(twista)
         self.rate.sleep()
+        twista.linear.x = 0
+        twista.linear.x = 0
+        self._cmd_vel_publisher.publish(twista)
         return False
         
     def paint(self, x, y, rgb):
