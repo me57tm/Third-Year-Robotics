@@ -15,7 +15,7 @@ from main.util import *
 from PIL import Image
 import numpy as np
 
-from geometry_msgs.msg import ( PoseStamped, PoseWithCovarianceStamped,
+from geometry_msgs.msg import ( Pose, PoseStamped, PoseWithCovarianceStamped,
                                 PoseArray, Quaternion, Transform, TransformStamped, Twist )
 from tf.msg import tfMessage
 from sensor_msgs.msg import LaserScan
@@ -39,6 +39,7 @@ class PaintingNode(object):
         
 
         self._pose_publisher = rospy.Publisher("/estimatedpose", PoseStamped)
+        self._truth_publisher = rospy.Publisher("/truthpose", PoseStamped) # Cheaty and only to be used for real world sensor type things
         self._amcl_pose_publisher = rospy.Publisher("/amcl_pose",
                                                     PoseWithCovarianceStamped)
         self._cloud_publisher = rospy.Publisher("/particlecloud", PoseArray)
@@ -60,7 +61,7 @@ class PaintingNode(object):
         height = ocuccupancy_map.info.height
         width = ocuccupancy_map.info.width
         self._colour_map = np.zeros((height, width, 3), dtype=np.uint8)
-        self._colour_map[0:height][0:width] = [255, 255, 255]
+        self._colour_map[0:height][0:width] = [127, 127, 127]
         #self._colour_map = [[None]*ocuccupancy_map.info.height]*ocuccupancy_map.info.width#This may or may not be the wrong way round
         # for xrow in self._colour_map:
         #     for i in range(0, len(xrow)):
@@ -73,7 +74,7 @@ class PaintingNode(object):
         
         self._paint_and_nav_thread = main.painter_navigator.PainterNavigator(1, "PainterNavigator", 1, self._paint_location, self._colour_map, self._image, ocuccupancy_map)
         
-        self._particle_filter = main.pf.PFLocaliser()
+        self._particle_filter = main.pf.PFLocaliser(self._colour_sensor)
         
         self._particle_filter.set_map(ocuccupancy_map)
         
@@ -119,7 +120,7 @@ class PaintingNode(object):
             estimatedpose =  PoseStamped()
             estimatedpose.pose = self._particle_filter.estimatedpose.pose.pose
             estimatedpose.header.frame_id = "map"
-            self._pose_publisher.publish(estimatedpose)    
+            self._pose_publisher.publish(estimatedpose)
                 
     def _ground_truth_callback(self,odometry):
         transform = Transform()
@@ -135,7 +136,19 @@ class PaintingNode(object):
         new_tfstamped.header.stamp = rospy.Time.now()
         new_tfstamped.transform = transform
         self._tf_publisher.publish(tfMessage(transforms=[new_tfstamped]))
-        pass
+
+        truthPose = Pose()
+        truthPose.position.x = transform.translation.x
+        truthPose.position.y = transform.translation.y
+        truthPose.orientation.x=transform.rotation.x
+        truthPose.orientation.y=transform.rotation.y
+        truthPose.orientation.z=transform.rotation.z
+        truthPose.orientation.w=transform.rotation.w
+        ps = PoseStamped()
+        ps.pose = truthPose
+        ps.header.frame_id = "map"
+        self._truth_publisher.publish(ps)
+        
     
     def _laser_callback(self, scan):
         """

@@ -1,7 +1,7 @@
 
 import rospy
 
-from geometry_msgs.msg import (Pose,PoseWithCovarianceStamped, PoseArray,
+from geometry_msgs.msg import (Pose,PoseStamped,PoseWithCovarianceStamped, PoseArray,
                                Quaternion,  Transform,  TransformStamped )
 from tf.msg import tfMessage
 from tf import transformations
@@ -25,7 +25,7 @@ class PFLocaliser(object):
     INIT_Z = 0 			# Initial z location of robot (metres)
     INIT_HEADING = 0 	# Initial orientation of robot (radians)
     
-    def __init__(self):
+    def __init__(self,colourSensor):
         # ----- Initialise fields
         self.estimatedpose =  PoseWithCovarianceStamped()
         self.occupancy_map = OccupancyGrid()
@@ -69,7 +69,7 @@ class PFLocaliser(object):
         self.particlecloud.header.frame_id = "map"
         
         # ----- Sensor model
-        self.sensor_model =  sensor_model.SensorModel()
+        self.sensor_model =  sensor_model.SensorModel(colourSensor)
 
     def initialise_particle_cloud(self, initialpose):
         ip = initialpose.pose.pose
@@ -150,7 +150,8 @@ class PFLocaliser(object):
 
     def update_particle_cloud(self, scan):
         #Get Weights and Normalise
-        weightList = [self.sensor_model.get_weight(scan, particle) for particle in self.particlecloud.poses]
+        truthPose = rospy.wait_for_message("/truthpose", PoseStamped, timeout=None).pose
+        weightList = [self.sensor_model.get_weight(scan, particle,truthPose) for particle in self.particlecloud.poses]
         totalWeight = sum(weightList)
         
         #Resample

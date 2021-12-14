@@ -7,13 +7,14 @@ from . util import getHeading
 from . import color_sensor
 
 import math
+from threading import Lock
 
 from . import laser_trace
 
 PI_OVER_TWO = math.pi/2 
 
 class SensorModel(object):
-    def __init__(self):
+    def __init__(self,colourSensor):
         # ----- Parameters for particle weight calculation
         self.z_hit = 0.95 		# Default probability if we make a hit
         self.z_short = 0.1 	# Probability of a short reading from 
@@ -23,12 +24,13 @@ class SensorModel(object):
         self.z_rand = 0.05 	# Random noise on all readings
         
         self.sigma_hit = 0.2 		# Noise on hit
-        self.sigma_color = 7.65      # Noise for colour readings (would be 7.65 scaled to fit with sigma_hit)
+        self.sigma_color = 50 #7.65-->      # Noise for colour readings (would be 7.65 scaled to fit with sigma_hit)
         self.lambda_short = 0.1 	# Noise on short reading
         
         # Initialise scan parameters to nothing
         self.set_laser_scan_parameters(0, 0, 0, 0, 0)
-        
+        self.colourSensor = colourSensor
+
     def set_laser_scan_parameters(self,num_readings, scan_range_max,
                                   scan_length, scan_angle_min,
                                   scan_angle_max ):
@@ -99,7 +101,7 @@ class SensorModel(object):
             # ----- rospy.logwarn("calc_map_range giving oversized ranges!!")
             return self.scan_range_max
         
-    def get_weight(self, scan, pose,colorSensor=None):
+    def get_weight(self, scan, pose,truthPose):
         """
         Compute the likelihood weighting for each of a set of particles 
         
@@ -112,14 +114,13 @@ class SensorModel(object):
          """
     
         p = 1.0 # Sample weight (not a probability!)
-        
-        if colorSensor is not None:
-            expected_color = [127,127,127] # TODO: Update this to read from robot's position when possible
-            colorReading = colorSensor.getReading(pose.position.x,pose.position.y)
-            pzr = color_predict(colorReading[0],expected_color)
-            pzb = color_predict(colorReading[1],expected_color)
-            pzg = color_predict(colorReading[2],expected_color)
-            p += (pzr * pzb * pzg)*len(self.reading_points)
+        expected_color = self.colourSensor.getReading(int(truthPose.position.x / self.map_resolution),int(truthPose.position.y / self.map_resolution))
+        #expected_color = [127,127,127]
+        colorReading = self.colourSensor.getReading(int(pose.position.x / self.map_resolution),int(pose.position.y / self.map_resolution))
+        pzr = self.color_predict(colorReading[0],expected_color[0])
+        pzb = self.color_predict(colorReading[1],expected_color[1])
+        pzg = self.color_predict(colorReading[2],expected_color[2])
+        p += 0.1*(pzr * pzb * pzg)*len(self.reading_points)
 
         
         for i, obs_bearing in self.reading_points:
@@ -134,7 +135,7 @@ class SensorModel(object):
             map_range = self.calc_map_range(pose.position.x, pose.position.y,
                                      getHeading(pose.orientation) + obs_bearing)
             pz = self.predict(obs_range, map_range)
-            p += pz*pz*pz # Cube probability: reduce low-probability particles 
+            p += 0.9*pz*pz*pz # Cube probability: reduce low-probability particles 
         return p
     
     def predict(self, obs_range, map_range):
@@ -177,7 +178,7 @@ class SensorModel(object):
         z = obs_color - map_color
         pz = 0
         pz +=( #self.z_hit *
-                math.exp(-(z * z) / (2 * self.sigma_colour * self.sigma_colour)) )
+                math.exp(-(z * z) / (2 * self.sigma_color * self.sigma_color)) )
         return pz
     
         
