@@ -114,13 +114,13 @@ class SensorModel(object):
          """
     
         p = 1.0 # Sample weight (not a probability!)
-        expected_color = self.colourSensor.getReading(int(truthPose.position.x / self.map_resolution),int(truthPose.position.y / self.map_resolution))
-        expected_color = [127,127,127]
-        colorReading = self.colourSensor.getReading(int(pose.position.x / self.map_resolution),int(pose.position.y / self.map_resolution))
-        pzr = self.color_predict(colorReading[0],expected_color[0])
-        pzb = self.color_predict(colorReading[1],expected_color[1])
-        pzg = self.color_predict(colorReading[2],expected_color[2])
-        p += 0.1*(pzr * pzb * pzg)*len(self.reading_points)
+        #expected_color = self.colourSensor.getReading(int(truthPose.position.x / self.map_resolution),int(truthPose.position.y / self.map_resolution))
+        #expected_color = [127,127,127]
+        #colorReading = self.colourSensor.getReading(int(pose.position.x / self.map_resolution),int(pose.position.y / self.map_resolution))
+        #pzr = self.color_predict(colorReading[0],expected_color[0])
+        #pzb = self.color_predict(colorReading[1],expected_color[1])
+        #pzg = self.color_predict(colorReading[2],expected_color[2])
+        #p += 0.1*(pzr * pzb * pzg)*len(self.reading_points)
 
         
         for i, obs_bearing in self.reading_points:

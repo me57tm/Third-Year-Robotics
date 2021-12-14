@@ -69,7 +69,6 @@ class PaintingNode(object):
         self._colour_sensor = main.color_sensor.ColorSensor(self._colour_map)
         
         self._paint_location = self._image_fitter.findLocation(ocuccupancy_map)
-
         rospy.loginfo(self._paint_location)
         
         self._paint_and_nav_thread = main.painter_navigator.PainterNavigator(1, "PainterNavigator", 1, self._paint_location, self._colour_map, self._image, ocuccupancy_map)
