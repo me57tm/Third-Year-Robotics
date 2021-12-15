@@ -25,7 +25,7 @@ class PainterNavigator(threading.Thread):
         self.output_image = False
         self.latest_pose_estimate = Pose()
         self.debug_image_generation = True
-        self.rate = rospy.Rate(50)
+        self.rate = rospy.Rate(1000)
         value = self.image.getpixel((0,0))
         for x in range(0, self.map.info.width):
             for y in range(0, self.map.info.height):
@@ -249,7 +249,7 @@ class PainterNavigator(threading.Thread):
         twista = Twist()
         # move once the current and goal angles are alligned to 2dp otherwise correct the angle
         if math.floor(10*cpr) == math.floor(10*angle):
-            #print("moving:", distance)
+            print("moving:", distance)
             twista.linear.x = distance
             twista.angular.z = 0
         else:

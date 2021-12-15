@@ -35,7 +35,7 @@ class PaintingNode(object):
         self._last_published_pose = None
         self._initial_pose_received = False
         
-        self._image = Image.open("src/main/data/face.png")
+        self._image = Image.open("src/main/data/tree2.png")
         
 
         self._pose_publisher = rospy.Publisher("/estimatedpose", PoseStamped)
