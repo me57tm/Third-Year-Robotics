@@ -60,7 +60,7 @@ class PaintingNode(object):
         self._image_fitter = main.fit_image.ImageFitter(self._image)
         height = ocuccupancy_map.info.height
         width = ocuccupancy_map.info.width
-        self._colour_map = np.zeros((height, width, 3), dtype=np.uint8)
+        self._colour_map = np.zeros((height, width, 4), dtype=np.uint8)
         self._colour_map[0:height][0:width] = [127, 127, 127, 255]
         #self._colour_map = [[None]*ocuccupancy_map.info.height]*ocuccupancy_map.info.width#This may or may not be the wrong way round
         # for xrow in self._colour_map:
