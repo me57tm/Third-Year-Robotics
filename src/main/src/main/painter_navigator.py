@@ -262,7 +262,7 @@ class PainterNavigator(threading.Thread):
         
     def paint(self, x, y, rgb):
         r, g, b, a = rgb
-        m,n,o = self.colour_map[x][y]
+        m,n,o,p = self.colour_map[x][y]
         if m == r and n == g and o == b:
             return False
         self.colour_map[x][y] = [r, g, b, a]
