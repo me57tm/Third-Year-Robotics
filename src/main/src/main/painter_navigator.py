@@ -30,10 +30,10 @@ class PainterNavigator(threading.Thread):
         for x in range(0, self.map.info.width):
             for y in range(0, self.map.info.height):
                 if self.findGridProb(x,y) == 100:
-                    self.colour_map[x][y] = [120, 120, 120]
+                    self.colour_map[x][y] = [255, 0, 0, 255]
 
         array1 = numpy.array(self.colour_map)
-        self.output_image = Image.fromarray(array1, "RGB")
+        self.output_image = Image.fromarray(array1, "RGBA")
         self.output_image.save("images/before.png", "PNG")
         
         self._cmd_vel_publisher = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
@@ -164,13 +164,13 @@ class PainterNavigator(threading.Thread):
             print("saved goal image")
             for command in self.command_queue:
                 x,y,rgb = command
-                self.paint(x,y,(0, 0, 255))
+                self.paint(x,y,(0, 0, 255, 255))
             array2 = numpy.array(self.colour_map)
-            self.output_image = Image.fromarray(array2, "RGB")
+            self.output_image = Image.fromarray(array2, "RGBA")
             self.output_image.save("images/goal.png", "PNG")
             for command in self.command_queue:
                 x,y,rgb = command
-                self.paint(x,y,(255,255,255))
+                self.paint(x,y,(255,255,255,255))
             self.debug_image_generation = False
             
         while(len(self.command_queue) > 0):
@@ -184,7 +184,7 @@ class PainterNavigator(threading.Thread):
                 if  self.paint(round(cpx), round(cpy), rgb):
                     if len(self.command_queue)%self.image.size[0] == 0:
                         array3 = numpy.array(self.colour_map)
-                        self.output_image = Image.fromarray(array3, "RGB")
+                        self.output_image = Image.fromarray(array3, "RGBA")
                         self.output_image.save("images/during"+str(len(self.command_queue))+".png", "PNG")
                     self.command_queue.pop(0)
                     print("pixels remaining:", len(self.command_queue))
@@ -205,7 +205,7 @@ class PainterNavigator(threading.Thread):
                     self.command_queue = cached_queue
         print("finished image")
         array4 = numpy.array(self.colour_map)
-        self.output_image = Image.fromarray(array4, "RGB")
+        self.output_image = Image.fromarray(array4, "RGBA")
         self.output_image.save("images/finished.png", "PNG")
 
     def checkPosition(self, targetx, targety):
@@ -261,11 +261,11 @@ class PainterNavigator(threading.Thread):
         return False
         
     def paint(self, x, y, rgb):
-        r, g, b = rgb
+        r, g, b, a = rgb
         m,n,o = self.colour_map[x][y]
         if m == r and n == g and o == b:
             return False
-        self.colour_map[x][y] = [r, g, b]
+        self.colour_map[x][y] = [r, g, b, a]
         return True        
 
     def findGridProb(self,x, y): # 0 = clear, 100 = wall, -1 = unknown
